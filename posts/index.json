@@ -1,0 +1,9 @@
+{
+  "posts": [
+    {
+      "slug": "hello-world",
+      "title": "hello, world",
+      "date": "2025-12-29"
+    }
+  ]
+}

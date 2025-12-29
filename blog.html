@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog | Vince</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark-dimmed.min.css">
+</head>
+<body>
+    <div class="reading-progress" id="reading-progress"></div>
+    <div class="page wide">
+        <header>
+            <nav>
+                <a href="index.html">home</a>
+                <a href="blog.html" class="active">blog</a>
+            </nav>
+            <div class="blog-header">
+                <h1>$ cat thoughts.md</h1>
+                <p>notes on systems, AI, and building things</p>
+            </div>
+        </header>
+
+        <main id="main">
+            <p class="loading">loading...</p>
+        </main>
+
+        <footer>
+            <a href="https://github.com/Force67">github</a>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <script>
+        const POSTS_INDEX = 'posts/index.json';
+        const POSTS_DIR = 'posts/';
+
+        function getSlug() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('p');
+        }
+
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        async function loadIndex() {
+            try {
+                const res = await fetch(POSTS_INDEX);
+                if (!res.ok) throw new Error('Failed to load posts');
+                return await res.json();
+            } catch (e) {
+                console.error('Failed to load posts index:', e);
+                return { posts: [] };
+            }
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;');
+        }
+
+        async function loadPost(slug) {
+            const res = await fetch(`${POSTS_DIR}${slug}.md`);
+            if (!res.ok) throw new Error('Post not found');
+            return await res.text();
+        }
+
+        function renderList(posts) {
+            if (posts.length === 0) {
+                return '<p class="muted">no posts yet</p>';
+            }
+
+            const sorted = [...posts].sort((a, b) =>
+                new Date(b.date) - new Date(a.date)
+            );
+
+            return `
+                <div class="post-list">
+                    ${sorted.map(post => `
+                        <a href="?p=${escapeHtml(post.slug)}" class="post-item">
+                            <span class="post-date">${formatDate(post.date)}</span>
+                            <span class="post-title">${escapeHtml(post.title)}</span>
+                        </a>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function estimateReadTime(content) {
+            const words = content.trim().split(/\s+/).length;
+            const minutes = Math.ceil(words / 200);
+            return minutes === 1 ? '1 min read' : `${minutes} min read`;
+        }
+
+        function renderPost(post, content, prevPost, nextPost) {
+            document.title = `${post.title} | Vince`;
+            const readTime = estimateReadTime(content);
+
+            const navHtml = (prevPost || nextPost) ? `
+                <nav class="post-nav">
+                    ${prevPost ? `<a href="?p=${escapeHtml(prevPost.slug)}" class="post-nav-link prev">&larr; ${escapeHtml(prevPost.title)}</a>` : '<span></span>'}
+                    ${nextPost ? `<a href="?p=${escapeHtml(nextPost.slug)}" class="post-nav-link next">${escapeHtml(nextPost.title)} &rarr;</a>` : '<span></span>'}
+                </nav>
+            ` : '';
+
+            return `
+                <article>
+                    <div class="post-header">
+                        <a href="blog.html" class="back">&larr; back</a>
+                        <h1>${escapeHtml(post.title)}</h1>
+                        <p class="meta">${formatDate(post.date)} &middot; ${readTime}</p>
+                    </div>
+                    <div class="content">
+                        ${marked.parse(content)}
+                    </div>
+                    ${navHtml}
+                    <div class="comments">
+                        <h2>// comments</h2>
+                        <div id="giscus-container"></div>
+                    </div>
+                </article>
+            `;
+        }
+
+        function addCopyButtons() {
+            document.querySelectorAll('.content pre').forEach(pre => {
+                const btn = document.createElement('button');
+                btn.className = 'copy-btn';
+                btn.textContent = 'copy';
+                btn.addEventListener('click', async () => {
+                    const code = pre.querySelector('code')?.textContent || pre.textContent;
+                    await navigator.clipboard.writeText(code);
+                    btn.textContent = 'copied!';
+                    setTimeout(() => btn.textContent = 'copy', 2000);
+                });
+                pre.style.position = 'relative';
+                pre.appendChild(btn);
+            });
+        }
+
+        function initReadingProgress() {
+            const progress = document.getElementById('reading-progress');
+            const article = document.querySelector('article');
+            if (!progress || !article) return;
+
+            progress.style.display = 'block';
+
+            const updateProgress = () => {
+                const articleRect = article.getBoundingClientRect();
+                const articleTop = window.scrollY + articleRect.top;
+                const articleHeight = article.offsetHeight;
+                const windowHeight = window.innerHeight;
+                const scrolled = window.scrollY - articleTop + windowHeight * 0.3;
+                const percent = Math.min(Math.max(scrolled / articleHeight * 100, 0), 100);
+                progress.style.setProperty('--progress', `${percent}%`);
+            };
+
+            window.addEventListener('scroll', updateProgress, { passive: true });
+            updateProgress();
+        }
+
+        function loadGiscus(slug) {
+            const container = document.getElementById('giscus-container');
+            if (!container) return;
+
+            const script = document.createElement('script');
+            script.src = 'https://giscus.app/client.js';
+            script.setAttribute('data-repo', 'Force67/Force67.github.io');
+            script.setAttribute('data-repo-id', 'R_kgDONWm2og');
+            script.setAttribute('data-category', 'Blogcomments');
+            script.setAttribute('data-category-id', 'DIC_kwDONWm2os4C0XM-');
+            script.setAttribute('data-mapping', 'specific');
+            script.setAttribute('data-term', slug);
+            script.setAttribute('data-strict', '0');
+            script.setAttribute('data-reactions-enabled', '1');
+            script.setAttribute('data-emit-metadata', '0');
+            script.setAttribute('data-input-position', 'bottom');
+            script.setAttribute('data-theme', 'transparent_dark');
+            script.setAttribute('data-lang', 'en');
+            script.setAttribute('crossorigin', 'anonymous');
+            script.async = true;
+            container.appendChild(script);
+        }
+
+        function processFigures() {
+            const content = document.querySelector('.content');
+            if (!content) return;
+
+            // Number all images and add figure IDs
+            const images = content.querySelectorAll('img');
+            images.forEach((img, i) => {
+                const num = i + 1;
+                img.id = `fig-${num}`;
+                img.dataset.figure = num;
+            });
+
+            // Convert [fig:X] references to clickable links
+            content.innerHTML = content.innerHTML.replace(
+                /\[fig:(\d+)\]/g,
+                '<a href="#fig-$1" class="figure-ref">[Fig. $1]</a>'
+            );
+        }
+
+        function processFootnotes() {
+            const content = document.querySelector('.content');
+            if (!content) return;
+
+            // Convert [^1] style references to clickable links
+            content.innerHTML = content.innerHTML.replace(
+                /\[\^(\d+)\]/g,
+                '<sup><a href="#fn-$1" id="fnref-$1" class="footnote-ref">[$1]</a></sup>'
+            );
+
+            // Find footnote definitions and wrap them
+            const footnoteSection = content.querySelector('hr:last-of-type');
+            if (footnoteSection) {
+                let sibling = footnoteSection.nextElementSibling;
+                while (sibling) {
+                    const match = sibling.textContent?.match(/^\[(\d+)\]:/);
+                    if (match) {
+                        const num = match[1];
+                        sibling.id = `fn-${num}`;
+                        sibling.classList.add('footnote');
+                        sibling.innerHTML = sibling.innerHTML.replace(
+                            /^\[(\d+)\]:\s*/,
+                            `<a href="#fnref-${num}" class="footnote-back">[${num}]</a> `
+                        );
+                    }
+                    sibling = sibling.nextElementSibling;
+                }
+            }
+        }
+
+        async function init() {
+            const main = document.getElementById('main');
+            const slug = getSlug();
+
+            try {
+                const { posts } = await loadIndex();
+                const sorted = [...posts].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                if (slug) {
+                    const postIndex = sorted.findIndex(p => p.slug === slug);
+                    const post = sorted[postIndex];
+                    if (!post) {
+                        main.innerHTML = '<p class="error">post not found</p>';
+                        return;
+                    }
+                    const content = await loadPost(slug);
+                    const prevPost = sorted[postIndex + 1] || null;
+                    const nextPost = sorted[postIndex - 1] || null;
+                    main.innerHTML = renderPost(post, content, prevPost, nextPost);
+                    hljs.highlightAll();
+                    addCopyButtons();
+                    processFigures();
+                    processFootnotes();
+                    loadGiscus(post.slug);
+                    initReadingProgress();
+                } else {
+                    main.innerHTML = renderList(posts);
+                }
+            } catch (e) {
+                main.innerHTML = `<p class="error">${e.message}</p>`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

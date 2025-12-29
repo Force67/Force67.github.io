@@ -211,26 +211,21 @@ section h2 {
 }
 
 .project-details {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows 0.3s ease;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
 }
 
 .project-details > p {
-    overflow: hidden;
     color: var(--muted);
     line-height: 1.7;
-    padding: 0;
     margin: 0;
+    padding-left: calc(140px + 1.25rem);
 }
 
 .project.expanded .project-details {
-    grid-template-rows: 1fr;
-}
-
-.project.expanded .project-details > p {
+    max-height: 200px;
     padding-top: 1rem;
-    padding-left: calc(140px + 1.25rem);
 }
 
 .project-image {
@@ -660,7 +655,7 @@ section h2 {
         gap: 0.25rem;
     }
 
-    .project.expanded .project-details > p {
+    .project-details > p {
         padding-left: 0;
     }
 

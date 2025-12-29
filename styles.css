@@ -21,6 +21,7 @@ html {
     text-size-adjust: 100%;
 }
 
+
 /* Reading progress */
 .reading-progress {
     --progress: 0%;
@@ -189,21 +190,47 @@ section h2 {
 }
 
 .project {
-    display: grid;
-    grid-template-columns: 140px 1fr;
-    gap: 1.25rem;
     padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--line);
-    transition: transform 0.2s ease;
-}
-
-.project:hover {
-    transform: translateX(4px);
 }
 
 .project:last-child {
     border-bottom: none;
     padding-bottom: 0;
+}
+
+.project-main {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 1.25rem;
+    transition: transform 0.2s ease;
+}
+
+.project-main:hover {
+    transform: translateX(4px);
+}
+
+.project-details {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease;
+}
+
+.project-details > p {
+    overflow: hidden;
+    color: var(--muted);
+    line-height: 1.7;
+    padding: 0;
+    margin: 0;
+}
+
+.project.expanded .project-details {
+    grid-template-rows: 1fr;
+}
+
+.project.expanded .project-details > p {
+    padding-top: 1rem;
+    padding-left: calc(140px + 1.25rem);
 }
 
 .project-image {
@@ -280,10 +307,36 @@ section h2 {
     margin-bottom: 0.5rem;
 }
 
+.project-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
 .project-tags {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+}
+
+.github-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: var(--text-sm);
+    color: var(--muted);
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.github-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    text-decoration: none;
 }
 
 /* Blog page header */
@@ -593,7 +646,7 @@ section h2 {
         width: 94%;
     }
 
-    .project {
+    .project-main {
         grid-template-columns: 1fr;
         gap: 0.75rem;
     }
@@ -605,6 +658,10 @@ section h2 {
     .project-header {
         flex-direction: column;
         gap: 0.25rem;
+    }
+
+    .project.expanded .project-details > p {
+        padding-left: 0;
     }
 
     .post-item {

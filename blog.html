@@ -272,6 +272,89 @@
             }
         }
 
+        function initMermaidLightbox() {
+            document.querySelectorAll('.mermaid-diagram').forEach(diagram => {
+                diagram.addEventListener('click', () => openMermaidLightbox(diagram));
+            });
+        }
+
+        function openMermaidLightbox(diagram) {
+            const svg = diagram.querySelector('svg');
+            if (!svg) return;
+
+            let zoom = 1;
+            const ZOOM_STEP = 0.25;
+            const MIN_ZOOM = 0.5;
+            const MAX_ZOOM = 4;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'mermaid-lightbox';
+
+            const inner = document.createElement('div');
+            inner.className = 'mermaid-lightbox-inner';
+
+            const clone = svg.cloneNode(true);
+            clone.style.maxWidth = 'none';
+            clone.style.width = Math.max(svg.getBoundingClientRect().width * 2, 600) + 'px';
+            inner.appendChild(clone);
+
+            const controls = document.createElement('div');
+            controls.className = 'mermaid-lightbox-controls';
+            controls.innerHTML = `
+                <button data-action="out" title="Zoom out">-</button>
+                <span class="mermaid-lightbox-zoom">100%</span>
+                <button data-action="in" title="Zoom in">+</button>
+                <button data-action="reset" title="Reset zoom">1:1</button>
+            `;
+
+            overlay.appendChild(inner);
+            overlay.appendChild(controls);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(() => overlay.classList.add('visible'));
+
+            const zoomLabel = controls.querySelector('.mermaid-lightbox-zoom');
+
+            function applyZoom() {
+                clone.style.transform = `scale(${zoom})`;
+                zoomLabel.textContent = Math.round(zoom * 100) + '%';
+            }
+
+            controls.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const action = btn.dataset.action;
+                if (action === 'in') zoom = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
+                else if (action === 'out') zoom = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
+                else if (action === 'reset') zoom = 1;
+                applyZoom();
+            });
+
+            inner.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) zoom = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
+                else zoom = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
+                applyZoom();
+            }, { passive: false });
+
+            function close() {
+                overlay.classList.remove('visible');
+                setTimeout(() => overlay.remove(), 200);
+            }
+
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) close();
+            });
+
+            document.addEventListener('keydown', function handler(e) {
+                if (e.key === 'Escape') {
+                    close();
+                    document.removeEventListener('keydown', handler);
+                }
+            });
+        }
+
         async function init() {
             const main = document.getElementById('main');
             const slug = getSlug();
@@ -294,6 +377,7 @@
                     hljs.highlightAll();
                     addCopyButtons();
                     await processMermaid();
+                    initMermaidLightbox();
                     processYouTube();
                     processFigures();
                     processFootnotes();

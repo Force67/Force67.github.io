@@ -12,7 +12,7 @@
     <div class="page wide">
         <header>
             <nav>
-                <a href="index.html">home</a>
+                <a href="/">home</a>
                 <a href="blog.html" class="active">blog</a>
             </nav>
             <div class="blog-header">
@@ -30,6 +30,8 @@
         </footer>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { primaryColor: '#1a2e1a', primaryTextColor: '#efe7db', primaryBorderColor: '#6fb9a1', lineColor: '#e0a26e', secondaryColor: '#121612', tertiaryColor: '#0f1310', background: '#0f1310', mainBkg: '#1a2e1a', nodeBorder: '#6fb9a1', clusterBkg: 'rgba(18,22,18,0.75)', clusterBorder: 'rgba(239,231,219,0.12)', titleColor: '#e0a26e', edgeLabelBackground: '#0f1310', nodeTextColor: '#efe7db' }});</script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
     <script>
@@ -118,9 +120,10 @@
                         <a href="blog.html" class="back">&larr; back</a>
                         <h1>${escapeHtml(post.title)}</h1>
                         <p class="meta">${formatDate(post.date)} &middot; ${readTime}</p>
+                        <span class="badge human-written">human written, no ai slop</span>
                     </div>
                     <div class="content">
-                        ${marked.parse(content)}
+                        ${marked.parse(content.replace(/^#\s+.+\n+/, '').replace(/!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g, `![$1](media/${post.slug}/$2)`))}
                     </div>
                     ${navHtml}
                     <div class="comments">
@@ -189,6 +192,35 @@
             script.setAttribute('crossorigin', 'anonymous');
             script.async = true;
             container.appendChild(script);
+        }
+
+        async function processMermaid() {
+            const content = document.querySelector('.content');
+            if (!content) return;
+
+            const blocks = content.querySelectorAll('code.language-mermaid');
+            for (const code of blocks) {
+                const pre = code.parentElement;
+                const div = document.createElement('div');
+                div.className = 'mermaid-diagram';
+                const { svg } = await mermaid.render('mermaid-' + Math.random().toString(36).slice(2), code.textContent);
+                div.innerHTML = svg;
+                pre.replaceWith(div);
+            }
+        }
+
+        function processYouTube() {
+            const content = document.querySelector('.content');
+            if (!content) return;
+
+            content.querySelectorAll('a').forEach(a => {
+                const m = a.href.match(/(?:youtu\.be\/|youtube\.com\/watch\?v=)([\w-]+)/);
+                if (!m || a.textContent.trim() !== a.href) return;
+                const wrapper = document.createElement('div');
+                wrapper.className = 'yt-embed';
+                wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
+                a.parentElement.replaceWith(wrapper);
+            });
         }
 
         function processFigures() {
@@ -261,6 +293,8 @@
                     main.innerHTML = renderPost(post, content, prevPost, nextPost);
                     hljs.highlightAll();
                     addCopyButtons();
+                    await processMermaid();
+                    processYouTube();
                     processFigures();
                     processFootnotes();
                     loadGiscus(post.slug);

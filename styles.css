@@ -408,6 +408,17 @@ section h2 {
     font-size: var(--text-sm);
 }
 
+.badge.human-written {
+    display: inline-block;
+    margin-top: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--accent-2);
+    border: 1px solid rgba(111, 185, 161, 0.3);
+    padding: 0.2rem 0.6rem;
+    border-radius: 3px;
+    letter-spacing: 0.03em;
+}
+
 /* Markdown content */
 .content {
     line-height: 1.8;
@@ -501,6 +512,37 @@ section h2 {
     font-style: italic;
 }
 
+/* YouTube embeds */
+.yt-embed {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    margin: 1.5rem 0;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+}
+
+.yt-embed iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Mermaid diagrams */
+.mermaid-diagram {
+    margin: 1.5rem 0;
+    text-align: center;
+    overflow-x: auto;
+}
+
+.mermaid-diagram svg {
+    max-width: 40%;
+    height: auto;
+}
+
 .content hr {
     border: none;
     border-top: 1px solid var(--line);
@@ -508,10 +550,11 @@ section h2 {
 }
 
 .content img {
-    max-width: 100%;
+    max-width: 40%;
     border-radius: 6px;
-    margin: 1.5rem auto 0.5rem;
+    margin: 1rem auto;
     display: block;
+    border: 1px solid var(--line);
 }
 
 /* Image captions - uses alt text via CSS or em after img */
@@ -524,6 +567,7 @@ section h2 {
     margin-bottom: 1.5rem;
     font-style: italic;
 }
+
 
 .content a {
     color: var(--accent);

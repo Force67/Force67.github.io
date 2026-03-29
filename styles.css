@@ -564,7 +564,8 @@ section h2 {
     justify-content: center;
     opacity: 0;
     transition: opacity 0.2s ease;
-    cursor: zoom-out;
+    overflow: hidden;
+    touch-action: none;
 }
 
 .mermaid-lightbox.visible {
@@ -572,10 +573,10 @@ section h2 {
 }
 
 .mermaid-lightbox-inner {
-    overflow: auto;
-    max-width: 95vw;
-    max-height: 90vh;
+    width: 80vw;
+    height: 80vh;
     cursor: grab;
+    transform-origin: center center;
 }
 
 .mermaid-lightbox-inner:active {
@@ -584,10 +585,8 @@ section h2 {
 
 .mermaid-lightbox-inner svg {
     display: block;
-    max-width: none;
-    height: auto;
-    transform-origin: center center;
-    transition: transform 0.15s ease;
+    width: 100%;
+    height: 100%;
 }
 
 .mermaid-lightbox-controls {
@@ -598,6 +597,10 @@ section h2 {
     display: flex;
     gap: 0.5rem;
     z-index: 2001;
+    background: rgba(15, 19, 16, 0.8);
+    padding: 0.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
 }
 
 .mermaid-lightbox-controls button {

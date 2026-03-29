@@ -218,7 +218,7 @@
                 if (!m || a.textContent.trim() !== a.href) return;
                 const wrapper = document.createElement('div');
                 wrapper.className = 'yt-embed';
-                wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}" frameborder="0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`;
+                wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${m[1]}" frameborder="0" allowfullscreen></iframe>`;
                 a.parentElement.replaceWith(wrapper);
             });
         }
@@ -283,9 +283,10 @@
             if (!svg) return;
 
             let zoom = 1;
+            let panX = 0, panY = 0;
             const ZOOM_STEP = 0.25;
             const MIN_ZOOM = 0.5;
-            const MAX_ZOOM = 4;
+            const MAX_ZOOM = 5;
 
             const overlay = document.createElement('div');
             overlay.className = 'mermaid-lightbox';
@@ -294,55 +295,135 @@
             inner.className = 'mermaid-lightbox-inner';
 
             const clone = svg.cloneNode(true);
-            clone.style.maxWidth = 'none';
-            clone.style.width = Math.max(svg.getBoundingClientRect().width * 2, 600) + 'px';
+            clone.removeAttribute('style');
+            clone.style.width = '100%';
+            clone.style.height = '100%';
             inner.appendChild(clone);
 
             const controls = document.createElement('div');
             controls.className = 'mermaid-lightbox-controls';
             controls.innerHTML = `
-                <button data-action="out" title="Zoom out">-</button>
+                <button data-action="close" title="Close">&times;</button>
+                <button data-action="out" title="Zoom out">&minus;</button>
                 <span class="mermaid-lightbox-zoom">100%</span>
                 <button data-action="in" title="Zoom in">+</button>
-                <button data-action="reset" title="Reset zoom">1:1</button>
+                <button data-action="reset" title="Reset">1:1</button>
             `;
 
             overlay.appendChild(inner);
             overlay.appendChild(controls);
             document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
 
             requestAnimationFrame(() => overlay.classList.add('visible'));
 
             const zoomLabel = controls.querySelector('.mermaid-lightbox-zoom');
 
-            function applyZoom() {
-                clone.style.transform = `scale(${zoom})`;
+            function applyTransform() {
+                inner.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
                 zoomLabel.textContent = Math.round(zoom * 100) + '%';
             }
 
+            function setZoom(newZoom) {
+                zoom = Math.min(Math.max(newZoom, MIN_ZOOM), MAX_ZOOM);
+                applyTransform();
+            }
+
+            // Button controls
             controls.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const btn = e.target.closest('button');
                 if (!btn) return;
                 const action = btn.dataset.action;
-                if (action === 'in') zoom = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
-                else if (action === 'out') zoom = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
-                else if (action === 'reset') zoom = 1;
-                applyZoom();
+                if (action === 'in') setZoom(zoom + ZOOM_STEP);
+                else if (action === 'out') setZoom(zoom - ZOOM_STEP);
+                else if (action === 'reset') { zoom = 1; panX = 0; panY = 0; applyTransform(); }
+                else if (action === 'close') close();
             });
 
-            inner.addEventListener('wheel', (e) => {
+            // Mouse wheel zoom
+            overlay.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                if (e.deltaY < 0) zoom = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
-                else zoom = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
-                applyZoom();
+                const delta = e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
+                setZoom(zoom + delta);
+            }, { passive: false });
+
+            // Mouse drag to pan
+            let dragging = false, dragStartX, dragStartY, startPanX, startPanY;
+
+            inner.addEventListener('mousedown', (e) => {
+                if (e.button !== 0) return;
+                dragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                startPanX = panX;
+                startPanY = panY;
+                inner.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                panX = startPanX + (e.clientX - dragStartX);
+                panY = startPanY + (e.clientY - dragStartY);
+                applyTransform();
+            });
+
+            window.addEventListener('mouseup', () => {
+                dragging = false;
+                inner.style.cursor = '';
+            });
+
+            // Touch: drag to pan + pinch to zoom
+            let lastTouchDist = 0, lastTouchX = 0, lastTouchY = 0;
+
+            inner.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                } else if (e.touches.length === 2) {
+                    lastTouchDist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+                e.preventDefault();
+            }, { passive: false });
+
+            inner.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 1) {
+                    const dx = e.touches[0].clientX - lastTouchX;
+                    const dy = e.touches[0].clientY - lastTouchY;
+                    panX += dx;
+                    panY += dy;
+                    lastTouchX = e.touches[0].clientX;
+                    lastTouchY = e.touches[0].clientY;
+                    applyTransform();
+                } else if (e.touches.length === 2) {
+                    const dist = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    if (lastTouchDist > 0) {
+                        const scale = dist / lastTouchDist;
+                        setZoom(zoom * scale);
+                    }
+                    lastTouchDist = dist;
+                }
+                e.preventDefault();
             }, { passive: false });
 
             function close() {
                 overlay.classList.remove('visible');
-                setTimeout(() => overlay.remove(), 200);
+                document.body.style.overflow = '';
+                setTimeout(() => {
+                    overlay.remove();
+                    window.removeEventListener('mousemove', arguments.callee);
+                    window.removeEventListener('mouseup', arguments.callee);
+                }, 200);
             }
 
+            // Close on backdrop click (not on inner/controls)
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) close();
             });
